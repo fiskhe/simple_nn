@@ -1,8 +1,4 @@
 
-import iris
-
-quit()
-
 # Alrighty
 print('working')
 
