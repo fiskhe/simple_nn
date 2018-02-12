@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import time
 
 dataframe = pd.read_csv('irises_processed.csv')
 
@@ -10,9 +11,11 @@ ada_learn_rate = 0.01
 rms_learn_rate = 0.001
 epsilon = 1e-8
 gamma = 0.9
-num_epochs = 100000
+num_epochs = 30000 # thirty-thousand
 sum_grad0 = 0
 sum_grad1 = 0
+
+metrics = []
 
 # Ensure "randomness" is a controlled variable
 np.random.seed(1)
@@ -50,7 +53,7 @@ def eval_acc(real, pred):
             
     return accurate
     
-first = True
+start_time = time.monotonic()
 
 for epoch in range(num_epochs): 
     total_train_acc = 0
@@ -89,13 +92,9 @@ for epoch in range(num_epochs):
         # changes0 = adagrad(ada_learn_rate, sum_grad0, w0_grad, epsilon)
         # changes1 = adagrad(ada_learn_rate, sum_grad1, w1_grad, epsilon)
         
-        # Using rmsprop
-        if first:
-            changes0 = rmsprop(rms_learn_rate, sum_grad0, w0_grad, epsilon, 0)
-            changes1 = rmsprop(rms_learn_rate, sum_grad1, w1_grad, epsilon, 0)
-        else:
-            changes0 = rmsprop(rms_learn_rate, sum_grad0, w0_grad, epsilon, gamma)
-            changes1 = rmsprop(rms_learn_rate, sum_grad1, w1_grad, epsilon, gamma)
+        # Using RMSprop
+        changes0 = rmsprop(rms_learn_rate, sum_grad0, w0_grad, epsilon, gamma)
+        changes1 = rmsprop(rms_learn_rate, sum_grad1, w1_grad, epsilon, gamma)
 
         sum_grad0 = changes0[0]
         sum_grad1 = changes1[0]
@@ -106,7 +105,7 @@ for epoch in range(num_epochs):
         weights0 -= new_lr0 * w0_grad
         weights1 -= new_lr1 * w1_grad
 
-    # Testing
+    # Testing set
     for ind in range(30):
         i = 120 + ind
         layer0 = data[i].split('|')
@@ -123,13 +122,20 @@ for epoch in range(num_epochs):
             total_test_acc += 1
 
         
-    # Print out total error over epoch every 1000 epochs
-    if epoch % 10000 == 0:
-        print('total training accurate')
-        print(total_train_acc)
-        print(total_train_acc/120)
-        print('total testing accurate')
-        print(total_test_acc)
-        print(total_test_acc/30)
+    # Print out total error over epoch every 500 epochs
+    if epoch % 500 == 0:
+        # print('total training accurate')
+        # print(total_train_acc)
+        # print(total_train_acc/120)
+        # print('total testing accurate')
+        # print(total_test_acc)
+        # print(total_test_acc/30)
+        time_taken = np.round(time.monotonic() - start_time, 2) # in seconds
+        metric_entry = [total_train_acc/120, total_test_acc/30, time_taken]
+        metrics.append(metric_entry)
+
+
+metrics_df = pd.DataFrame(metrics, columns = ['Training Accuracy', 'Testing Accuracy', 'Time Taken'])
+metrics_df.to_csv('rmsprop_out.csv', index = False)
         
         
