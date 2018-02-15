@@ -11,7 +11,7 @@ ada_learn_rate = 0.01
 rms_learn_rate = 0.001
 epsilon = 1e-8
 gamma = 0.9
-num_epochs = 30000 # thirty-thousand
+num_epochs = 10000 # ten thousand
 sum_grad0 = 0
 sum_grad1 = 0
 
@@ -48,7 +48,9 @@ def eval_acc(real, pred):
     # The index of the greatest value in predicted vector
     p_index = np.where(pred == pred.max())[1]
         
-    if r_index == p_index:
+    if len(p_index) != 1:
+        return accurate
+    elif r_index == p_index:
         accurate = True
             
     return accurate
@@ -57,7 +59,9 @@ start_time = time.monotonic()
 
 for epoch in range(num_epochs): 
     total_train_acc = 0
+    total_train_err = 0
     total_test_acc = 0
+    total_test_err = 0
     
     # Training
     for ind in range(120):
@@ -79,6 +83,9 @@ for epoch in range(num_epochs):
         ######## A.K.A. Metrics ########
         if eval_acc(true_output, layer2):
             total_train_acc += 1
+        # Magnitude of error
+        magn_err = np.sum(np.square(true_output - layer2))
+        total_train_err += magn_err
         ################################
         
         # Use of the backpropagation algorithm
@@ -89,21 +96,21 @@ for epoch in range(num_epochs):
         w0_grad = np.dot(layer0.T, w0_delt)
         
         # Using Adagrad
-        # changes0 = adagrad(ada_learn_rate, sum_grad0, w0_grad, epsilon)
-        # changes1 = adagrad(ada_learn_rate, sum_grad1, w1_grad, epsilon)
+        changes0 = adagrad(ada_learn_rate, sum_grad0, w0_grad, epsilon)
+        changes1 = adagrad(ada_learn_rate, sum_grad1, w1_grad, epsilon)
         
         # Using RMSprop
-        changes0 = rmsprop(rms_learn_rate, sum_grad0, w0_grad, epsilon, gamma)
-        changes1 = rmsprop(rms_learn_rate, sum_grad1, w1_grad, epsilon, gamma)
-
+        # changes0 = rmsprop(rms_learn_rate, sum_grad0, w0_grad, epsilon, gamma) 
+        # changes1 = rmsprop(rms_learn_rate, sum_grad1, w1_grad, epsilon, gamma) 
+        
         sum_grad0 = changes0[0]
         sum_grad1 = changes1[0]
 
         new_lr0 = changes0[1]
         new_lr1 = changes1[1]
 
-        weights0 -= new_lr0 * w0_grad
-        weights1 -= new_lr1 * w1_grad
+        weights0 = weights0 + new_lr0 * w0_grad
+        weights1 = weights1 + new_lr1 * w1_grad
 
     # Testing set
     for ind in range(30):
@@ -118,24 +125,36 @@ for epoch in range(num_epochs):
         layer1 = sigmoid(np.dot(layer0, weights0)) # 1 x 4 matrix
         layer2 = sigmoid(np.dot(layer1, weights1)) # 1 x 3 matrix
 
+        ######## Gathering data ########
+        ######## A.K.A. Metrics ########
         if eval_acc(true_output, layer2):
             total_test_acc += 1
+        # Magnitude of error
+        magn_err = np.sum(np.square(true_output - layer2))
+        total_test_err += magn_err
+        ################################
 
         
     # Print out total error over epoch every 500 epochs
-    if epoch % 500 == 0:
-        # print('total training accurate')
+    if epoch % 250 == 0:
+        # print('')
+        # print('training')
         # print(total_train_acc)
         # print(total_train_acc/120)
-        # print('total testing accurate')
+        # print(total_train_err)
+        # print('-----------------')
+        # print('testing')
         # print(total_test_acc)
         # print(total_test_acc/30)
+        # print(total_test_err)
+        # print('')
+        
         time_taken = np.round(time.monotonic() - start_time, 2) # in seconds
-        metric_entry = [total_train_acc/120, total_test_acc/30, time_taken]
+        metric_entry = [total_train_acc/120, total_train_err, total_test_acc/30, total_test_err, time_taken]
         metrics.append(metric_entry)
 
 
-metrics_df = pd.DataFrame(metrics, columns = ['Training Accuracy', 'Testing Accuracy', 'Time Taken'])
-metrics_df.to_csv('rmsprop_out.csv', index = False)
-        
-        
+metrics_df = pd.DataFrame(metrics, columns = ['Training Accuracy', 'Training Error', 'Testing Accuracy', 'Testing Error', 'Time Taken'])
+metrics_df.to_csv('adagrad_out.csv', index = False)
+
+
